@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup, Comment
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from tzlocal import get_localzone
 import time
 import pandas as pd
@@ -20,7 +20,7 @@ base_url = 'https://news.naver.com/main/list.nhn?mode=LSD&mid=shm&sid1={}&date={
 
 def get_html(url, t):
     print(url)
-    time.sleep(0.5)
+    time.sleep(1)
     try:
         return requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
     except requests.exceptions.ConnectionError:
@@ -84,16 +84,18 @@ def crawl_every_night():
         print(df.head())
         dfs.append(df)
     full_df = pd.concat(dfs)
+    full_df.reset_index(inplace=True, drop=True)
     full_df.to_csv('./output_{}.csv'.format(date_string))
+    end = time.time()
+    print("Crawling complete: {t}".format(t=time.strftime("%H:%M:%S", time.gmtime(end - start))))
 
-    print("Crawling complete: {t}".format(t=strftime("%H:%M:%S", gmtime(end - start))))
 
+if __name__ == "__main__":
+    print("Starting news crawling..")
+    korea_time = timezone('Asia/Seoul').localize(datetime(2020, 1, 1, 23, 50, 0))
+    local_time = korea_time.astimezone(get_localzone()).time().strftime('%H:%M')
+    schedule.every().day.at(local_time).do(crawl_every_night)
 
-korea_time = timezone('Asia/Seoul').localize(datetime(2020, 1, 1, 14, 1, 0))
-local_time = korea_time.astimezone(get_localzone()).time().strftime('%H:%M')
-schedule.every().day.at(local_time).do(crawl_every_night)
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)
-
+    while True:
+        schedule.run_pending()
+        time.sleep(1)

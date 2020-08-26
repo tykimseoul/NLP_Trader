@@ -5,3 +5,4 @@ venv/lib
 pyvenv.cfg
 .env
 *.csv
+venv/__pycache__
