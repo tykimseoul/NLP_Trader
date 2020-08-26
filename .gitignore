@@ -1,0 +1,7 @@
+.idea
+venv/bin
+venv/lib
+*.pem
+pyvenv.cfg
+.env
+*.csv
