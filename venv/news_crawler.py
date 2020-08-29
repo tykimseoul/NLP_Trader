@@ -20,7 +20,7 @@ base_url = 'https://news.naver.com/main/list.nhn?mode=LSD&mid=shm&sid1={}&date={
 
 def get_html(url, t):
     print(url)
-    time.sleep(1)
+    time.sleep(0.5)
     try:
         return requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
     except requests.exceptions.ConnectionError:
@@ -47,11 +47,30 @@ def parse_post_list(category, date, last_page):
     return links
 
 
-def raw_post(url, category):
+def parse_post(url, category):
     html = get_html(url, 5)
     if html.url != url:
         return None
-    dct = {'url': url, 'category': category, 'raw': html.text}
+    document = BeautifulSoup(html.text, "lxml")
+    title = document.select_one('.article_info > #articleTitle').text
+    if re.match(r'^[0-9a-zA-Z\s]+$', title):
+        return None
+    date = document.select_one('.article_info > .sponsor > .t11').text
+    article = document.select_one('.article_body > #articleBodyContents')
+    if article is None:
+        return None
+    for s in article.find_all(['script', 'strong']) \
+             + article.select('.end_photo_org') \
+             + article.select('font > table') \
+             + article.select('.vod_area'):
+        s.extract()
+    for element in article(text=lambda text: isinstance(text, Comment)):
+        element.extract()
+    content = article.findAll(text=True, recursive=True)
+    content = list(filter(lambda c: c not in ['\n', ' ', '\t'], content))
+    content = list(map(lambda c: c.strip(), content))
+    content = ' '.join(content)
+    dct = {'title': title, 'date': date, 'category': category, 'content': content, 'url': url}
     return dct
 
 
@@ -66,13 +85,14 @@ def crawl_every_night():
         last_page = parse_category(category, date_string)
         posts = parse_post_list(category, date_string, last_page)
         print(len(posts))
-        data = list(map(lambda p: raw_post(p, category), posts))
+        data = list(map(lambda p: parse_post(p, category), posts))
+        data = list(filter(lambda d: d is not None, data))
         df = pd.DataFrame(data)
         print(df.head())
         dfs.append(df)
     full_df = pd.concat(dfs)
     full_df.reset_index(inplace=True, drop=True)
-    full_df.to_csv('./raw/{}.csv'.format(date_string))
+    full_df.to_csv('./news_data/{}.csv'.format(date_string))
     end = time.time()
     print("Crawling complete: {t}".format(t=time.strftime("%H:%M:%S", time.gmtime(end - start))))
 
