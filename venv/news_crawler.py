@@ -47,23 +47,11 @@ def parse_post_list(category, date, last_page):
     return links
 
 
-def parse_post(url, category):
+def raw_post(url, category):
     html = get_html(url, 5)
     if html.url != url:
         return None
-    document = BeautifulSoup(html.text, "html.parser")
-    div = document.find('div', class_='_article_body_contents')
-    for element in div(text=lambda text: isinstance(text, Comment)):
-        element.extract()
-    title = document.select_one('.article_info > #articleTitle').text
-    if re.match(r'^[0-9a-zA-Z\s]+$', title):
-        return None
-    date = document.select_one('.article_info > .sponsor > .t11').text
-    content = document.select_one('.article_body > #articleBodyContents').findAll(text=True, recursive=False)
-    content = list(filter(lambda c: c not in ['\n', ' ', '\t'], content))
-    content = list(map(lambda c: c.strip(), content))
-    content = ' '.join(content)
-    dct = {'title': title, 'date': date, 'category': category, 'content': content, 'url': url}
+    dct = {'url': url, 'category': category, 'raw': html.text}
     return dct
 
 
@@ -78,14 +66,13 @@ def crawl_every_night():
         last_page = parse_category(category, date_string)
         posts = parse_post_list(category, date_string, last_page)
         print(len(posts))
-        data = list(map(lambda p: parse_post(p, category), posts))
-        data = list(filter(lambda p: p is not None, data))
+        data = list(map(lambda p: raw_post(p, category), posts))
         df = pd.DataFrame(data)
         print(df.head())
         dfs.append(df)
     full_df = pd.concat(dfs)
     full_df.reset_index(inplace=True, drop=True)
-    full_df.to_csv('./output_{}.csv'.format(date_string))
+    full_df.to_csv('./raw/{}.csv'.format(date_string))
     end = time.time()
     print("Crawling complete: {t}".format(t=time.strftime("%H:%M:%S", time.gmtime(end - start))))
 
