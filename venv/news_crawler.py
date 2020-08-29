@@ -43,6 +43,8 @@ def parse_post_list(category, date, last_page):
         html = get_html(base_url.format(category, date, i), 5)
         page = BeautifulSoup(html.text, "html.parser")
         post_temp = page.select('.newsflash_body > .type06_headline > li > dl > dt > a')
+        post_temp.extend(page.select('.newsflash_body > .type06 > li > dl > dt > a'))
+        post_temp = list(filter(lambda p: not re.match(r'^[0-9a-zA-Z\s]+$', p.text), post_temp))
         links.extend(list(set(map(lambda p: p.get('href'), post_temp))))
     return links
 
@@ -53,8 +55,6 @@ def parse_post(url, category):
         return None
     document = BeautifulSoup(html.text, "lxml")
     title = document.select_one('.article_info > #articleTitle').text
-    if re.match(r'^[0-9a-zA-Z\s]+$', title):
-        return None
     date = document.select_one('.article_info > .sponsor > .t11').text
     article = document.select_one('.article_body > #articleBodyContents')
     if article is None:
