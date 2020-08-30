@@ -62,7 +62,9 @@ def parse_post(url, category):
     for s in article.find_all(['script', 'strong']) \
              + article.select('.end_photo_org') \
              + article.select('font > table') \
-             + article.select('.vod_area'):
+             + article.select('.vod_area') \
+             + article.select('a') \
+             + article.select('b'):
         s.extract()
     for element in article(text=lambda text: isinstance(text, Comment)):
         element.extract()
