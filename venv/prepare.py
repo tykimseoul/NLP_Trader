@@ -1,5 +1,6 @@
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.utils import to_categorical
 import pandas as pd
 import ast
 from collections import Counter
@@ -17,10 +18,16 @@ for code in os.listdir(stock_path):
     stock_file = stock_path + code
     df = pd.read_csv(stock_file, index_col=0)
     df.reset_index(drop=True, inplace=True)
+    df['종가'] = df['종가'].astype(float)
+    df['변화율'] = df['종가'].pct_change(periods=-1, axis=0, fill_method='bfill')
+    df['변화율'] = df.apply(lambda r: 0 if abs(r['변화율']) < 0.001 else r['변화율'] / abs(r['변화율']), axis=1)
+    df.dropna(inplace=True)
+    df['변화율'] = df['변화율'].astype(int)
+    df['encoding'] = df.apply(lambda r: np.array(to_categorical(r['변화율'], num_classes=3)), axis=1)
+    print(df.head(10))
     if len(stocks) == 0:
         stocks.append(df['날짜'])
-    df = df.drop(['날짜', '전일비'], axis=1)
-    stocks.append(df)
+    stocks.append(df[['변화율']])
 
 full_df = pd.concat(stocks, axis=1)
 print(full_df.head())
@@ -72,8 +79,10 @@ for file in sorted(os.listdir(news_path), reverse=True):
 
     stock_data = full_df[full_df['날짜'] == stock_date.strftime('%Y.%m.%d')]
     stock_data = stock_data.drop(['날짜'], axis=1)
-    print(stock_data.head())
-    y_train.append(np.tile(stock_data.to_numpy(), (len(df), 1)))
+    stock_data = np.array(stock_data.values.tolist())
+    stock_data = np.concatenate(stock_data, axis=None)
+    print(stock_data)
+    y_train.append(np.tile(stock_data, (len(df), 1)))
 
 x_train = np.concatenate(x_train)
 print(x_train.shape)
