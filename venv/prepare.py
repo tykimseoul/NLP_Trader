@@ -23,7 +23,8 @@ def encode_stock_data(code):
     return df[['날짜', 'encoding']]
 
 
-full_df = encode_stock_data('017670')
+code = '017670'
+full_df = encode_stock_data(code)
 dates = full_df['날짜'].tolist()
 dates.append(None)
 date_pairs = list(zip(dates[1:], dates[:-1]))
@@ -90,7 +91,7 @@ def prepare_data():
     print(y_train.shape)
 
     np.save('x_train.npy', x_train)
-    np.save('y_train.npy', y_train)
+    np.save('y_train_{}.npy'.format(code), y_train)
 
 
 prepare_data()
